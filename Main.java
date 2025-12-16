@@ -36,10 +36,8 @@ public class Main {
         private int currentTime;
         private final int quantum;
         private int numProcesses;
-        private int totalWaitingTime;
         public RRScheduler(ArrayList<Process> processes, int quantum) {
             this.processQueue = new LinkedList<>();
-            this.totalWaitingTime = 0;
             // sorting on process arrival time
             this.numProcesses = processes.size();
             boolean swapped;
@@ -60,8 +58,15 @@ public class Main {
             this.quantum = quantum;
         }
         public void simulate() {
+            Queue<Process> finishedProcesses = new LinkedList<>();
             Process nextProcess;
             Process currentProcess = null;
+            for (int i = 0; i < numProcesses; i++) {
+                Process temp = processQueue.poll();
+                temp.setTurnAroundTime(temp.getArrivalTime() * (-1));
+                temp.setWaitingTime(temp.getArrivalTime() * (-1));
+                processQueue.add(temp);
+            }
             while (!processQueue.isEmpty()) {
                 nextProcess = processQueue.peek();
                 if (nextProcess.getArrivalTime() <= currentTime) {
@@ -71,16 +76,36 @@ public class Main {
                     currentTime = nextProcess.getArrivalTime();
                     continue;
                 }
-                int currentBurstTime = currentProcess.getBurstTime();
-                for (int i = 0; i < Math.min(quantum, currentBurstTime); i++) {
+                int currentProcessTime = Math.min(currentProcess.getBurstTime(), quantum);
+                // processing simulation
+                for (int i = 0; i < currentProcessTime; i++) {
                     System.out.println("Time: " + currentTime + ", processing " + currentProcess.getId());
                     currentTime++;
-                    currentProcess.setBurstTime(currentProcess.getBurstTime()-1);
+                    currentProcess.setBurstTime(currentProcess.getBurstTime() - 1);
+                    currentProcess.setTurnAroundTime(currentProcess.getTurnAroundTime() + 1);
+                    for (int j = 0; j < processQueue.size(); j++) {
+                        Process temp = processQueue.poll();
+                        temp.setTurnAroundTime(temp.getTurnAroundTime() + 1);
+                        temp.setWaitingTime(temp.getWaitingTime() + 1);
+                        processQueue.add(temp);
+                    }
                 }
                 if (!processQueue.isEmpty()) System.out.println("Time: " + currentTime + ", Switching to Process " + processQueue.peek().getId());;
                 if (currentProcess.getBurstTime() > 0) processQueue.add(currentProcess);
+                else finishedProcesses.add(currentProcess);
             }
             System.out.println("Time: " + currentTime + ", Finished All Processes!!!");
+            int totalWaitingTime = 0;
+            int totalTurnAroundTime = 0;
+            for (int i = 0; i < numProcesses; i++) {
+                Process temp = finishedProcesses.poll();
+                totalWaitingTime += temp.getWaitingTime();
+                totalTurnAroundTime += temp.getTurnAroundTime();
+                System.out.println("Process: " + temp.getId() + ", Waiting time: " + temp.getWaitingTime() + ", Turn around time: " + temp.getTurnAroundTime());
+            }
+            int avgTurnAroundTime = totalTurnAroundTime / numProcesses;
+            int avgWaitingTime = totalWaitingTime / numProcesses;
+            System.out.println("AVG Waiting time: " + avgWaitingTime + ", AVG Turn around time: " + avgTurnAroundTime);
         }
     }
 }
