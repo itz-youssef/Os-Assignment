@@ -64,4 +64,15 @@ public class Main2 {
 
 
     }
+    System.out.println("\n--- Starting Priority Scheduler ---");
+System.out.print("Enter Aging Interval: ");
+int agingInterval = scanner.nextInt();
+
+PriorityScheduler priorityScheduler = new PriorityScheduler(
+    processes, 
+    contextSwitching, 
+    agingInterval
+);
+
+priorityScheduler.simulate();
 }
