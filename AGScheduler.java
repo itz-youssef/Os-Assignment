@@ -1,12 +1,326 @@
-
 import java.util.*;
 
 public class AGScheduler {
 
-    public void schedule(ArrayList<Process> processes) {
-        Queue<Process> readyQueue = new LinkedList<>();
-        List<String> executionOrder = new ArrayList<>();
+    List<String> execution_Order = new ArrayList<>();
+    List<Process> finished_Processes = new ArrayList<>();
 
+    // Sort by arrival time
+    private Process[] sortTHEArrivalTime(Process[] processes) {
+
+        Arrays.sort(processes, Comparator.comparingInt(Process::getArrivalTime));
+        return processes;
 
     }
+
+    //  Phase 2
+    private Process get_Best_Priority(List<Process> waitingQueue) {
+
+        if (waitingQueue.isEmpty()) return null;
+
+        Process best_Process = waitingQueue.get(0);
+
+        for (Process process : waitingQueue) {
+            if (process.getPriority() < best_Process.getPriority()) {
+                best_Process = process;
+            }
+        }
+
+        return best_Process;
+    }
+
+    // Phase 3
+    private Process getShortestJob(List<Process> waitingQueue) {
+
+        if (waitingQueue.isEmpty()) return null;
+
+        Process shortestJob = waitingQueue.get(0);
+
+        for (Process process : waitingQueue) {
+
+            if (process.getRemainingTime() < shortestJob.getRemainingTime()) {
+
+                shortestJob = process;
+
+            }
+        }
+
+        return shortestJob;
+    }
+
+    private void printINFO(List<Process> finishedProcesses, List<String> executionOrder, int flag) {
+
+        finishedProcesses.sort(Comparator.comparing(Process::getName));
+
+        System.out.println("Execution Order: " + executionOrder);
+
+        double avgWaitingTime = 0, avgTurnaroundTime = 0;
+
+        System.out.println("Process Results: [");
+
+        for (Process process : finishedProcesses) {
+
+            System.out.print("{ Name: " + process.getName() +
+                    ", Waiting Time: " + process.getWaitingTime() +
+                    ", Turnaround Time: " + process.getTurnaroundTime());
+
+            if (flag == 1) {
+
+//                System.out.print(", Quantum History: " + process.getQuantumHistory());
+
+            }
+            System.out.println(" }");
+
+            avgWaitingTime += process.getWaitingTime();
+            avgTurnaroundTime += process.getTurnaroundTime();
+
+        }
+
+        System.out.println("],");
+
+        double final_Avg_Wait = avgWaitingTime / finishedProcesses.size();
+        double final_Avg_Turn = avgTurnaroundTime / finishedProcesses.size();
+
+        System.out.println("Average Waiting Time: " + (Math.round(final_Avg_Wait * 100.0) / 100.0));
+        System.out.println("Average Turnaround Time: " + (Math.round(final_Avg_Turn * 100.0) / 100.0) + "\n");
+    }
+
+    public void updateQuantum(Process p, int time_executed, int scenario) {
+
+        int remainingQuantum = p.getQuantumTime() - time_executed;
+        int newQuantum;
+
+        newQuantum = switch (scenario) {
+
+            case 1 -> p.getQuantumTime() + 2;
+            case 2 -> p.getQuantumTime() + (int) Math.ceil(remainingQuantum / 2.0);
+            case 3 -> p.getQuantumTime() + remainingQuantum;
+            case 4 -> 0;
+            default -> p.getQuantumTime();
+
+        };
+
+        p.setQuantumTime(newQuantum);
+    }
+
+    public void StartSimulation(Process[] processes) {
+
+        int currentTIME = 0;
+        List<Process> readyQueue = new ArrayList<>();
+        sortTHEArrivalTime(processes);
+        int i = 0;
+
+        Process nextProcess = null;
+
+        while (finished_Processes.size() < processes.length) {
+            while (i < processes.length && processes[i].getArrivalTime() <= currentTIME) {
+
+                readyQueue.add(processes[i]);
+                i++;
+
+            }
+
+            if (readyQueue.isEmpty()) {
+
+                if (i < processes.length) {
+
+                    currentTIME = processes[i].getArrivalTime();
+                }
+
+                continue;
+            }
+
+            Process p;
+
+            if(nextProcess != null){
+
+                p = nextProcess;
+                nextProcess = null;
+
+            }
+
+            else{
+
+                p = readyQueue.remove(0);
+            }
+
+            execution_Order.add(p.getName());
+
+            int q = p.getQuantumTime();
+            int q1 = (int) Math.ceil(0.25 * q);
+            int q2 = (int) Math.ceil(0.25 * q);
+
+            Boolean is_preempted = false;
+
+            int runtime = 0;
+
+            while (runtime < q1 && p.getRemainingTime() > 0) {
+
+                p.adjustRemainingTime();
+                currentTIME++;
+                runtime++;
+
+                while (i < processes.length && processes[i].getArrivalTime() <= currentTIME) {
+
+                    readyQueue.add(processes[i]);
+                    i++;
+
+                }
+
+            }
+
+            if (p.getRemainingTime() == 0) {
+
+                updateQuantum(p, runtime, 4);
+                finished_Processes.add(p);
+                p.turnaroundTime = currentTIME - p.getArrivalTime();
+                p.waitingTime = p.turnaroundTime - p.burstTime;
+                continue;
+
+            }
+
+
+
+
+            Process higherpriority = get_Best_Priority(readyQueue);
+            while (runtime < q1 + q2 && p.remainingTime > 0) {
+
+                if (higherpriority != null && higherpriority.priority < p.priority) {
+
+                    updateQuantum(p, runtime, 2);
+                    readyQueue.add(p);
+
+                    if(readyQueue.get(0) != higherpriority) {
+
+                        readyQueue.remove(higherpriority);
+                        nextProcess = higherpriority;
+
+                    }
+
+                    is_preempted = true;
+                    break;
+                }
+
+
+                p.remainingTime--;
+                currentTIME++;
+                runtime++;
+
+
+                while (i < processes.length && processes[i].arrivalTime <= currentTIME) {
+
+                    readyQueue.add(processes[i]);
+                    i++;
+
+                }
+            }
+
+            if(is_preempted) continue;
+
+            if (p.remainingTime == 0) {
+
+                updateQuantum(p, runtime, 4);
+                finished_Processes.add(p);
+                p.turnaroundTime = currentTIME - p.arrivalTime;
+                p.waitingTime = p.turnaroundTime - p.burstTime;
+                continue;
+
+            }
+
+            while (runtime < q && runtime >= q1 + q2 && p.remainingTime > 0) {
+
+                Process shortest = getShortestJob(readyQueue);
+                if (shortest != null && shortest.remainingTime < p.remainingTime) {
+
+                    updateQuantum(p, runtime, 3);
+                    readyQueue.add(p);
+
+                    if(readyQueue.get(0) != shortest) {
+
+                        readyQueue.remove(shortest);
+                        nextProcess = shortest;
+
+                    }
+
+                    is_preempted = true;
+                    break;
+
+
+                }
+
+                p.remainingTime--;
+                currentTIME++;
+                runtime++;
+
+
+                while (i < processes.length && processes[i].arrivalTime <= currentTIME) {
+                    readyQueue.add(processes[i]);
+                    i++;
+                }
+            }
+
+            if(is_preempted) continue;
+
+            if (p.remainingTime == 0) {
+
+                updateQuantum(p, runtime, 4);
+                finished_Processes.add(p);
+                p.turnaroundTime = currentTIME - p.arrivalTime;
+                p.waitingTime = p.turnaroundTime - p.burstTime;
+
+            }
+            else if (runtime == q && p.remainingTime > 0) {
+
+                updateQuantum(p, runtime, 1);
+                readyQueue.add(p);
+            }
+        }
+
+        System.out.println("\nAG Scheduling Process info");
+        printINFO(finished_Processes, execution_Order, 1);
+    }
 }
+
+//import java.util.*;
+//
+//public class main {
+//    public static void main(String[] args) {
+//        Process[] processes = {
+//                new Process("P1", 0, 17, 4, 7),
+//                new Process("P2", 2, 6, 7, 9),
+//                new Process("P3", 5, 11, 3, 4),
+//                new Process("P4", 15, 4, 6, 6)
+//        };
+//
+//        AGScheduler scheduler = new AGScheduler();
+//        scheduler.StartSimulation(processes);
+//
+//        // Expected output for comparison
+//        List<String> expectedExecutionOrder = Arrays.asList("P1", "P2", "P3", "P2", "P1", "P3", "P4", "P3", "P1", "P4");
+//
+//        // Print the execution order from the scheduler
+//        System.out.println("Execution Order: " + scheduler.execution_Order);
+//        System.out.println("Expected Execution Order: " + expectedExecutionOrder);
+//
+//        // Calculate the average waiting time and turnaround time
+//        double avgWaitingTime = 0, avgTurnaroundTime = 0;
+//        for (Process p : scheduler.finished_Processes) {
+//            avgWaitingTime += p.getWaitingTime();
+//            avgTurnaroundTime += p.getTurnaroundTime();
+//        }
+//        avgWaitingTime /= scheduler.finished_Processes.size();
+//        avgTurnaroundTime /= scheduler.finished_Processes.size();
+//
+//        // Print the process results
+//        System.out.println("Process Results: ");
+//        for (Process p : scheduler.finished_Processes) {
+//            System.out.println("Name: " + p.getName() + ", Waiting Time: " + p.getWaitingTime() +
+//                    ", Turnaround Time: " + p.getTurnaroundTime() );
+////                    ", Quantum History: " + p.getQuantumHistory());
+//        }
+//
+//        // Print the average waiting time and turnaround time
+//        System.out.println("Average Waiting Time: " + avgWaitingTime);
+//        System.out.println("Average Turnaround Time: " + avgTurnaroundTime);
+//    }
+//}

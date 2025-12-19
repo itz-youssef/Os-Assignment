@@ -1,18 +1,22 @@
+import java.util.ArrayList;
+import java.util.List;
+
 public class Process {
-    private String name;
-    private int arrivalTime;
-    private int burstTime;
-    private int priority;
-    private int quantumTime;
-    private int quantumUsed;
+     String name;
+     int arrivalTime;
+     int burstTime;
+     int priority;
+     int quantumTime;
+     int quantumUsed;
+    List<Integer> quantumHistory = new ArrayList<>();
 
 
-    private int remainingTime;
-    private int waitingTime;
-    private int turnaroundTime;
-    private int completionTime;
-    private int currentQuantum;
-    private int phase;
+     int remainingTime;
+     int waitingTime;
+     int turnaroundTime;
+     int completionTime;
+     int currentQuantum;
+     int phase;
 
     public Process(String name, int arrivalTime, int burstTime, int priority, int quantumTime ) {
         this.name = name;
@@ -35,6 +39,9 @@ public class Process {
         }
     }
 
+    public void adjustRemainingTime() {
+        this.remainingTime --;
+    }
 
     public void adjustQuantumTime(int remainingQuantumTime) {
 //        int remainingQuantumTime = quantumTime - quantumUsed;
@@ -74,6 +81,8 @@ public class Process {
     public int getQuantumUsed() { return quantumUsed; }
     public void setQuantumUsed(int q) { this.quantumUsed = q; }
 
+    public int getPhase() { return phase; }
+    public void setPhase(int phase) { this.phase = phase; }
 
     public String toString() {
         return "Process{" + "name='" + name + '\'' + ", arrival=" + arrivalTime +
@@ -84,7 +93,8 @@ public class Process {
         this.quantumUsed += time;  // Add executed time to quantumUsed
         this.remainingTime -= time;  // Reduce remaining burst time
     }
+    public void addQuantumToHistory(int timeExecuted) {
+        this.quantumHistory.add(timeExecuted);
+    }
 
 }
-
-
